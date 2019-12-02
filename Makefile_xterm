@@ -1,0 +1,41 @@
+# makefile for making standalone C xterm application with primitive graphics without python
+# call with: make -f Makefile_xterm
+#
+# written by John S. McCaskill Nov 2019#
+#
+# use make to make C library genelife_lib.so
+#
+TARGET_EXEC ?= genelife_xterm
+
+BUILD_DIR ?= ./build
+SRC_DIRS ?= ./genelifec ./genelifecx
+
+
+SRCS := $(shell find $(SRC_DIRS) -name *.c)
+OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
+DEPS := $(OBJS:.o=.d)
+
+INC_DIRS := $(shell find $(SRC_DIRS) -type d)
+INC_FLAGS := $(addprefix -I,$(INC_DIRS))
+
+CFLAGS ?= $(INC_FLAGS) -g -Wall -std=gnu99 -MMD -MP
+
+LDFLAGS ?= -lm
+
+$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+
+# c source
+$(BUILD_DIR)/%.c.o: %.c
+	$(MKDIR_P) $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+
+.PHONY: clean
+
+clean:
+	$(RM) -r $(BUILD_DIR)
+
+-include $(DEPS)
+
+MKDIR_P ?= mkdir -p

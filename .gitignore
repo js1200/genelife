@@ -1,0 +1,7 @@
+**/*.pyc
+IDEWorkspaceChecks.plist
+genelife.xcscheme
+libgenelife.dylib
+**/*.xcuserstate
+.ipynb_checkpoints
+
