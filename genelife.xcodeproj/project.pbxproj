@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5263546123894F9B007B90CC /* libgenelife.dylib.dSYM in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5263546023894F9B007B90CC /* libgenelife.dylib.dSYM */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		5267E35E23717D9600AB7328 /* mathext.c in Sources */ = {isa = PBXBuildFile; fileRef = 5267E35D23717D9600AB7328 /* mathext.c */; };
 		5267E35F23717D9600AB7328 /* mathext.c in Sources */ = {isa = PBXBuildFile; fileRef = 5267E35D23717D9600AB7328 /* mathext.c */; };
 		5267E36123717EE100AB7328 /* display.c in Sources */ = {isa = PBXBuildFile; fileRef = 5267E36023717EE100AB7328 /* display.c */; };
@@ -55,16 +54,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		0D6098712388DB4100AA2CF5 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 8;
-			dstPath = "$(SRCROOT)/genelifepy";
-			dstSubfolderSpec = 0;
-			files = (
-				5263546123894F9B007B90CC /* libgenelife.dylib.dSYM in CopyFiles */,
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
 		521C1454214DDE9400E17A8F /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -250,7 +239,7 @@
 				52416DB21F27771500721D17 /* Sources */,
 				52416DB31F27771500721D17 /* Frameworks */,
 				52416DB41F27771500721D17 /* Headers */,
-				0D6098712388DB4100AA2CF5 /* CopyFiles */,
+				522D12AE2396448800B138F2 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -298,6 +287,26 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		522D12AE2396448800B138F2 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Copy .dSYM file to genelifepy execution directory\nif [ \"$CONFIGURATION\" == \"Release\" ]; then\n    cp -R ${BUILT_PRODUCTS_DIR}/libgenelife.dylib.dSYM ${PROJECT_DIR}/genelifepy/libgenelife.dylib.dSYM\nelse\n    cp -R ${BUILT_PRODUCTS_DIR}/libgenelife.dylib.dSYM ${PROJECT_DIR}/genelifepy/libgenelife.dylib.dSYM\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		521C1452214DDE9400E17A8F /* Sources */ = {
@@ -397,6 +406,7 @@
 			buildSettings = {
 				CLANG_UNDEFINED_BEHAVIOR_SANITIZER_INTEGER = NO;
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_LOCATION = YES;
 				DEPLOYMENT_POSTPROCESSING = YES;
 				DSTROOT = /;
@@ -417,11 +427,13 @@
 			buildSettings = {
 				CLANG_UNDEFINED_BEHAVIOR_SANITIZER_INTEGER = NO;
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_LOCATION = YES;
 				DEPLOYMENT_POSTPROCESSING = YES;
 				DSTROOT = /;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
+				ENABLE_TESTABILITY = NO;
 				EXECUTABLE_PREFIX = lib;
 				GCC_GENERATE_TEST_COVERAGE_FILES = NO;
 				GCC_OPTIMIZATION_LEVEL = fast;
@@ -467,7 +479,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
