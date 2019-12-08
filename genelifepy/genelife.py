@@ -141,8 +141,8 @@ offdx = offdy = offdt = 0
 quadrants = -1
 gcolor = 0
                                          # registering interactive change commands during run
-stepreg = []                             # list of (framenr) steps at which changes made
-pyreg = []                               # list of python codes inside run for executing change at steps in stepreg
+stepreg = stepregin = []                 # list of (framenr) steps at which changes made
+pyreg = pyregin = []                     # list of python codes inside run for executing change at steps in stepreg
 
                                          # counter and toggle initialization
 cnt = 0
@@ -933,14 +933,14 @@ def savelist(regfile,stepreg,pyreg):
         
 #-----------------------------------------------------------------------------------------------------------
 def readlist(regfilename):
-    global stepreg,pyreg
+    global stepregin,pyregin
 
     if os.access(regfilename+'.pkl', os.F_OK):
         err = 0
         with open(regfilename+'.pkl', 'rb') as f:
-            try: stepreg = pickle.load(f)
+            try: stepregin = pickle.load(f)
             except: err += 2
-            try: pyreg = pickle.load(f)
+            try: pyregin = pickle.load(f)
             except: err += 4
             f.close()
     else:
@@ -949,15 +949,7 @@ def readlist(regfilename):
         print("Error recording load: err= %x" % err)
     else:
         print("recording commands loaded from", regfilename+'.pkl')
-#-----------------------------------------------------------------------------------------------------------
-def nextstep(stepreg,stepindex):
-    finish = len(stepreg)
-    if stepindex == finish:
-        nextstep = -1
-    else:
-        nextstep = stepreg[cindex]
-        stepindex = stepindex + 1
-    return stepindex,nextstep
+    return err
 #-----------------------------------------------------------------------------------------------------------
 # infinite loop of display updates
 # alt click in graphics window to stop, click for pixel details or quadrant selection,
@@ -983,12 +975,21 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
     global gogo,pause,mouseclicked,mouseclicked2,pixeldat,paramdat
     global maxPlane,offdx,offdy,offdt,quadrants,displayoneplane
     global parhelp
-    global stepreg,pyreg
+    global stepreg,pyreg,stepregin,pyregin
     
     if not regfile:
         stepreg = []
         pyreg = []
         regfile = "recording"
+        regerr = -1
+    else:
+        regerr = readlist(regfile)
+        if regerr == 0:
+            stepindex = 0
+            if stepindex == len(stepregin):
+                cmdstep = -1
+            else:
+                cmdstep = stepregin[0]
 
     mstime = sdl2.timer.SDL_GetTicks()
     actsizecoltxt= [" color from hashkey"," color log2 of size"," color # pixels"," color sqrt # pixels"]
@@ -1079,7 +1080,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                     bit = (repscheme>>k)&0x1
                                     genelife.set_repscheme(repscheme)
                                     register(regfile,framenr,["repscheme = %x" % repscheme,"genelife.set_repscheme(repscheme)",
-                                    f"draw_rect(surfacex1,cancol[0][{k}]*(1+bit),[{k}<<(log2N-6),Height+6,3*sc,3*sc])"])
+                                    f"draw_rect(surfacex1,cancol[0][{k}]*(1+{bit}),[{k}<<(log2N-6),Height+6,3*sc,3*sc])"])
                                     print(("step %d repscheme changed to %x" % (framenr,repscheme)))
                                 elif k<18:
                                     survivalmask = survivalmask ^ (1<<(k-16))
@@ -1087,7 +1088,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                     surviveover[0],surviveover[1] = survivalmask,overwritemask      # 2nd elt only picked up in C as overwrite for selection<8
                                     genelife.set_surviveover64(surviveover)
                                     register(regfile,framenr,["survivalmask = %x" % survivalmask,"surviveover[0],surviveover[1] = survivalmask,overwritemask",
-                                          "genelife.set_surviveover64(surviveover)","draw_rect(surfacex1,cancol[0][%d]*(1+bit),[%d<<(log2N-6),Height+6,3*sc,3*sc])" % k])
+                                          "genelife.set_surviveover64(surviveover)",f"draw_rect(surfacex1,cancol[0][{k}]*(1+{bit}),[{k}<<(log2N-6),Height+6,3*sc,3*sc])"])
                                     print(("step %d survivalmask changed to %x" % (framenr,survivalmask)))
                                 else:
                                     overwritemask = overwritemask ^ (1<<(k-18))
@@ -1095,7 +1096,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                     surviveover[0],surviveover[1] = survivalmask,overwritemask      # 2nd elt only picked up in C as overwrite for selection<8
                                     genelife.set_surviveover64(surviveover)
                                     register(regfile,framenr,["overwritemask = %x" % overwritemask,"surviveover[0],surviveover[1] = survivalmask,overwritemask",
-                                          "genelife.set_surviveover64(surviveover)","draw_rect(surfacex1,cancol[0][%d]*(1+bit),[%d<<(log2N-6),Height+6,3*sc,3*sc])" % k])
+                                          "genelife.set_surviveover64(surviveover)",f"draw_rect(surfacex1,cancol[0][{k}]*(1+{bit}),[{k}<<(log2N-6),Height+6,3*sc,3*sc])"])
                                     print(("step %d overwritemask changed to %x" % (framenr,overwritemask)))
                                 draw_rect(surfacex1,cancol[0][k]*(1+bit),[k<<(log2N-6),Height+6,3*sc,3*sc])
                         elif selection < 10:
@@ -1121,7 +1122,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask
                                 genelife.set_surviveover64(surviveover)
                                 register(regfile,framenr,[updatemask,"surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask",
-                                    "genelife.set_surviveover64(surviveover)","draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+6,3*sc,3*sc])" % k])
+                                    "genelife.set_surviveover64(surviveover)",f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+6,3*sc,3*sc])"])
                             elif k<24+12:
                                 repscheme = repscheme ^ (1<<(k-24))
                                 print(("step %d repscheme changed to %x" % (framenr,repscheme)))
@@ -1129,7 +1130,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 draw_rect(surfacex1,bcolor,[k<<(log2N-6),Height+6,3*sc,3*sc])
                                 genelife.set_repscheme(repscheme)
                                 register(regfile,framenr,["repscheme = %x" % repscheme,"genelife.set_repscheme(repscheme)",
-                                    "draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+6,3*sc,3*sc])" % k])
+                                    f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+6,3*sc,3*sc])"])
                         elif selection < 12:
                             if k<12 and y>=N+12:
                                 repscheme = repscheme ^ (1<<k)
@@ -1138,7 +1139,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 draw_rect(surfacex1,bcolor,[k<<(log2N-6),Height+8+3*sc,3*sc,3*sc])
                                 genelife.set_repscheme(repscheme)
                                 register(regfile,framenr,["repscheme = %x" % repscheme,"genelife.set_repscheme(repscheme)",
-                                    "draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+8+3*sc,3*sc,3*sc])" % k])
+                                    f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+8+3*sc,3*sc,3*sc])"])
                             elif k<54:
                                 if k<23:
                                     survivalmask = survivalmask ^ (1<<k)
@@ -1159,7 +1160,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask
                                 genelife.set_surviveover64(surviveover)
                                 register(regfile,framenr,[updatemask,"surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask",
-                                    "genelife.set_surviveover64(surviveover)","draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+6,3*sc,3*sc])" % k])
+                                    "genelife.set_surviveover64(surviveover)",f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+6,3*sc,3*sc])"])
                         elif selection<14:
                             if k<64 and y<N+12:
                                 if k<32:
@@ -1177,7 +1178,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask
                                 genelife.set_surviveover64(surviveover)
                                 register(regfile,framenr,[updatemask,"surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask",
-                                    "genelife.set_surviveover64(surviveover)","draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+6,3*sc,3*sc])" % k])
+                                    "genelife.set_surviveover64(surviveover)",f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+6,3*sc,3*sc])"])
                             elif k<12:
                                 repscheme = repscheme ^ (1<<k)
                                 print(("step %d repscheme changed to %x" % (framenr,repscheme)))
@@ -1185,7 +1186,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 draw_rect(surfacex1,bcolor,[k<<(log2N-6),Height+8+3*sc,3*sc,3*sc])
                                 genelife.set_repscheme(repscheme)
                                 register(regfile,framenr,["repscheme = %x" % repscheme,"genelife.set_repscheme(repscheme)",
-                                    "draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+8+3*sc,3*sc,3*sc])" % k])
+                                    f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+8+3*sc,3*sc,3*sc])"])
                             elif k>=32 and k<40:
                                 overwritemask = overwritemask ^ (1<<(k-32))
                                 updatemask = "overwritemask = %x" % overwritemask
@@ -1195,7 +1196,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask
                                 genelife.set_surviveover64(surviveover)
                                 register(regfile,framenr,[updatemask,"surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask",
-                                "genelife.set_surviveover64(surviveover)","draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+8+3*sc,3*sc,3*sc])" % k])
+                                "genelife.set_surviveover64(surviveover)",f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+8+3*sc,3*sc,3*sc])"])
                         elif selection<16:
                             if k<64 and y<N+12:
                                 if k<32:
@@ -1212,7 +1213,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask
                                 genelife.set_surviveover64(surviveover)
                                 register(regfile,framenr,[updatemask,"surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask",
-                                    "genelife.set_surviveover64(surviveover)","draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+6,3*sc,3*sc])" % k])
+                                    "genelife.set_surviveover64(surviveover)",f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+6,3*sc,3*sc])"])
                             elif k<12:
                                 repscheme = repscheme ^ (1<<k)
                                 print(("step %d repscheme changed to %x" % (framenr,repscheme)))
@@ -1220,7 +1221,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 draw_rect(surfacex1,bcolor,[k<<(log2N-6),Height+8+3*sc,3*sc,3*sc])
                                 genelife.set_repscheme(repscheme)
                                 register(regfile,framenr,["repscheme = %x" % repscheme,"genelife.set_repscheme(repscheme)",
-                                "draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+8+3*sc,3*sc,3*sc])" % k])
+                                f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+8+3*sc,3*sc,3*sc])"])
                             elif k>=32 and k<40:
                                 overwritemask = overwritemask ^ (1<<(k-32))
                                 updatemask = "overwritemask = %x" % overwritemask
@@ -1230,7 +1231,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                                 surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask
                                 genelife.set_surviveover64(surviveover)
                                 register(regfile,framenr,[updatemask,"surviveover[0],surviveover[1],surviveover[2]= survivalmask,birthmask,overwritemask",
-                                "genelife.set_surviveover64(surviveover)","draw_rect(surfacex1,bcolor,[%d<<(log2N-6),Height+8+3*sc,3*sc,3*sc])" % k])
+                                "genelife.set_surviveover64(surviveover)",f"draw_rect(surfacex1,bcolor,[{k}<<(log2N-6),Height+8+3*sc,3*sc,3*sc])"])
                     else: # y<N
                         if colorfunction < 4 or colorfunction == 8 or colorfunction >10 :
                             genelife.get_curgol(gol)    # get current gol,golg,golgstats arrays
@@ -1434,67 +1435,68 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_RIGHT:
                     colorfunction = (colorfunction + 1) % 13
                     genelife.set_colorfunction(colorfunction)
-                    register(regfile,framenr,["colorfunction = %d" % colorfunction,"genelife.set_colorfunction(colorfunction)"])
+                    register(regfile,framenr,["global colorfunction","colorfunction = %d" % colorfunction,f"genelife.set_colorfunction({colorfunction})"])
                     print('step',framenr,'colorfunction changed to',colorfunction)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_LEFT:
                     colorfunction = (colorfunction - 1) % 13
                     genelife.set_colorfunction(colorfunction)
-                    register(regfile,framenr,["colorfunction = %d" % colorfunction,"genelife.set_colorfunction(colorfunction)"])
+                    register(regfile,framenr,["global colorfunction","colorfunction = %d" % colorfunction,f"genelife.set_colorfunction({colorfunction})"])
                     print('step',framenr,'colorfunction changed to',colorfunction)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_UP:
                     colorfunction2 = (colorfunction2 + 1)
                     if colorfunction2 == 13: colorfunction2 = -1
                     genelife.set_colorfunction2(colorfunction2)
-                    register(regfile,framenr,["colorfunction2 = %d" % colorfunction2,"genelife.set_colorfunction2(colorfunction2)"])
+                    register(regfile,framenr,["global colorfunction2","colorfunction2 = %d" % colorfunction2,f"genelife.set_colorfunction2({colorfunction2})"])
                     print('step',framenr,'colorfunction2 changed to',colorfunction2)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_DOWN:
                     colorfunction2 = (colorfunction2 - 1)
                     if colorfunction2 == -2: colorfunction2 = 12
                     genelife.set_colorfunction2(colorfunction2)
-                    register(regfile,framenr,["colorfunction2 = %d" % colorfunction2,"genelife.set_colorfunction2(colorfunction2)"])
+                    register(regfile,framenr,["global colorfunction2","colorfunction2 = %d" % colorfunction2,f"genelife.set_colorfunction2({colorfunction2})"])
                     print('step',framenr,'colorfunction2 changed to',colorfunction2)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_EQUALS or event.key == sdl2.SDL_SCANCODE_KP_PLUS:
                     if (colorfunction == 4) or (colorfunction == 5):
                         ymax = ymax * 2
                         oldymax = genelife.setget_act_ymax(ymax)
-                        register(regfile,framenr,["ymax = %d" % ymax,"oldymax = genelife.setget_act_ymax(ymax)"])
+                        register(regfile,framenr,["global ymax","ymax = %d" % ymax,"oldymax = genelife.setget_act_ymax(ymax)"])
                         print('step',framenr,'new ymax =',ymax)
                     elif colorfunction == 10:
                         ymaxq = ymaxq * 2
                         oldymaxq = genelife.setget_act_ymaxq(ymaxq)
-                        register(regfile,framenr,["ymaxq = %d" % ymaxq,"oldymaxq = genelife.setget_act_ymaxq(ymaxq)"])
+                        register(regfile,framenr,["global ymaxq","ymaxq = %d" % ymaxq,"oldymaxq = genelife.setget_act_ymaxq(ymaxq)"])
                         print('step',framenr,'new ymaxq =',ymaxq)
                     elif colorfunction == 11:
                         genealogycoldepth = genealogycoldepth + 1
                         genelife.set_genealogycoldepth(genealogycoldepth)
-                        register(regfile,framenr,["genealogycoldepth = %d" % genealogycoldepth,"genelife.set_genealogycoldepth(genealogycoldepth)"])
+                        register(regfile,framenr,["global genealogycoldepth","genealogycoldepth = %d" % genealogycoldepth,"genelife.set_genealogycoldepth(genealogycoldepth)"])
                         print('step',framenr,'new genealogycoldepth =',genealogycoldepth)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_MINUS or event.key == sdl2.SDL_SCANCODE_KP_MINUS:
                     if (colorfunction == 4) or (colorfunction == 5):
                         ymax = ymax // 2
                         oldymax = genelife.setget_act_ymax(ymax)
-                        register(regfile,framenr,["ymax = %d" % ymax,"oldymax = genelife.setget_act_ymax(ymax)"])
+                        register(regfile,framenr,["global ymax","ymax = %d" % ymax,"oldymax = genelife.setget_act_ymax(ymax)"])
                         print('step',framenr,'new ymax =',ymax)
                     elif colorfunction == 10:
                         ymaxq = ymaxq // 2
                         oldymaxq = genelife.setget_act_ymaxq(ymaxq)
-                        register(regfile,framenr,["ymaxq = %d" % ymaxq,"oldymaxq = genelife.setget_act_ymaxq(ymaxq)"])
+                        register(regfile,framenr,["global ymaxq","ymaxq = %d" % ymaxq,"oldymaxq = genelife.setget_act_ymaxq(ymaxq)"])
                         print('step',framenr,'new ymaxq =',ymaxq)
                     elif colorfunction == 11:
                         if genealogycoldepth > 0:
                             genealogycoldepth = genealogycoldepth - 1
                             genelife.set_genealogycoldepth(genealogycoldepth)
-                            register(regfile,framenr,["genealogycoldepth = %d" % genealogycoldepth,"genelife.set_genealogycoldepth(genealogycoldepth)"])
+                            register(regfile,framenr,["global genealogycoldepth","genealogycoldepth = %d" % genealogycoldepth,
+                                "genelife.set_genealogycoldepth(genealogycoldepth)"])
                             print('step',framenr,'new genealogycoldepth =',genealogycoldepth)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_1:
                     update1=1-update1
                     genelife.set_colorupdate1(update1)
-                    register(regfile,framenr,["update1 = %d" % update1,"genelife.set_colorupdate1(update1)"])
+                    register(regfile,framenr,["global update1","update1 = %d" % update1,"genelife.set_colorupdate1(update1)"])
                     if update1: print('step',framenr,'first window updates turned on')
                     else:       print('step',framenr,'first window updates turned off')
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_2:
                     update2=1-update2
-                    register(regfile,framenr,["update2 = %d" % update2])
+                    register(regfile,framenr,["global update2","update2 = %d" % update2])
                     if update2: print('step',framenr,'second window updates turned on')
                     else:       print('step',framenr,'second window updates turned off')
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_B:
@@ -1511,7 +1513,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                             nbhist=nbhistmax
                     if nbhist!=nbhistold:
                         genelife.set_nbhist(nbhist)
-                        register(regfile,framenr,["nbhist = %d" % nbhist,"genelife.set_nbhist(nbhist)"])
+                        register(regfile,framenr,["global nbhist","nbhist = %d" % nbhist,"genelife.set_nbhist(nbhist)"])
                         print('step',framenr,"nbhist changed to ",nbhist)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_C:
                     if colorfunction in [0,1,2,3,11,12]:
@@ -1521,7 +1523,7 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                         else:
                             nfrstep = nfrstep - 1
                             if nfrstep < 0: nfrstep = 8-1
-                        register(regfile,framenr,["nfrstep = %d" % nfrstep])
+                        register(regfile,framenr,["global nfrstep","nfrstep = %d" % nfrstep])
                         print('step',framenr,"nfrstep changed to ",nfrstep)
                         # colorgrid(colorfunction,cgolg,cgrid,0,nfrstep)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_D:
@@ -1546,25 +1548,25 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                             windowsize=(Width, Height+16)
                         if window.get_flags() & pg.FULLSCREEN:
                             window = pg.display.set_mode(windowsize)
-                            register(regfile,framenr,["windowsize = %d" % windowsize,"window = pg.display.set_mode(windowsize)"])
+                            register(regfile,framenr,["global windowsize","windowsize = %d" % windowsize,"window = pg.display.set_mode(windowsize)"])
                             # screen = pg.display.set_mode(screensize,pg.DOUBLEBUF|pg.OPENGL,32)
                         else:
                             sdl2.SDL_SetWindowFullscreen(window)
-                            register(regfile,framenr,["windowsize = %d" % windowsize,"sdl2.SDL_SetWindowFullscreen(window)"])
+                            register(regfile,framenr,["global windowsize","windowsize = %d" % windowsize,"sdl2.SDL_SetWindowFullscreen(window)"])
                     else:   # key 'f'
                         print("no of frames per second (av. last 10) = %f" % framerate)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_G:
                     if colorfunction == 9:
                         gcolor = (gcolor+1)%10;
                         genelife.set_gcolors()
-                        register(regfile,framenr,["gcolor = %d" % gcolor,"genelife.set_gcolors()"])
+                        register(regfile,framenr,["global gcolor","gcolor = %d" % gcolor,"genelife.set_gcolors()"])
                         print('step',framenr,'new gcolor =',gcolor)
                     elif colorfunction == 6 or colorfunction == 7 or colorfunction == 11:
                         ancestortype= ancestortype + 1
                         if ancestortype > 2:
                             ancestortype = 0
                         genelife.set_ancestortype(ancestortype)
-                        register(regfile,framenr,["ancestortype = %d" % ancestortype,"genelife.set_ancestortype(ancestortype)"])
+                        register(regfile,framenr,["global ancestortype","ancestortype = %d" % ancestortype,"genelife.set_ancestortype(ancestortype)"])
                         if ancestortype == 2:
                             print('step',framenr,'new ancestor choice clonal for win 2 first for win 1')
                         elif ancestortype == 1:
@@ -1578,28 +1580,29 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                     if (info_transfer_h != 0): do_info_transfer = 1;
                     else: do_info_transfer = 0;
                     genelife.set_info_transfer_h(do_info_transfer,nbhoods[info_transfer_h])
-                    register(regfile,framenr,["info_transfer_h = %d" % info_transfer_h,"genelife.set_info_transfer_h(do_info_transfer,nbhoods[info_transfer_h])"])
+                    register(regfile,framenr,["global info_transfer_h","info_transfer_h = %d" % info_transfer_h,
+                        "genelife.set_info_transfer_h(do_info_transfer,nbhoods[info_transfer_h])"])
                     print('step',framenr,'info_transfer_h =',info_transfer_h)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_L:
                     activityfnlut = 1 - activityfnlut
                     genelife.set_activityfnlut(activityfnlut)
-                    register(regfile,framenr,["activityfnlut = %d" % activityfnlut,"genelife.set_activityfnlut(activityfnlut)"])
+                    register(regfile,framenr,["global activityfnlut","activityfnlut = %d" % activityfnlut,"genelife.set_activityfnlut(activityfnlut)"])
                     print('step',framenr,'activityfnlut =',activityfnlut)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_N:
                     if   sdl2.SDL_GetModState() &  (sdl2.KMOD_LSHIFT|sdl2.KMOD_RSHIFT):
                         genelife.get_nnovelcells(nnovelcells)
-                        register(regfile,framenr,["genelife.get_nnovelcells(nnovelcells)"])
+                        register(regfile,framenr,["global nnovelcells","genelife.get_nnovelcells(nnovelcells)"])
                         print('step',framenr,"collected trace of nnovelcells")
                     else:
                         noveltyfilter=1-noveltyfilter
                         genelife.set_noveltyfilter()
-                        register(regfile,framenr,["noveltyfilter = %d" % noveltyfilter,"genelife.set_noveltyfilter()"])
+                        register(regfile,framenr,["global noveltyfilter","noveltyfilter = %d" % noveltyfilter,"genelife.set_noveltyfilter()"])
                         print('step',framenr,"noveltyfilter changed to ",noveltyfilter)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_P:
                     activity_size_colormode=(activity_size_colormode+1)%4
                     genelife.set_activity_size_colormode()
                     pixeldat=actsizecoltxt[activity_size_colormode]
-                    register(regfile,framenr,["activity_size_colormode = %d" % activity_size_colormode,
+                    register(regfile,framenr,["global activity_size_colormode","activity_size_colormode = %d" % activity_size_colormode,
                         "genelife.set_activity_size_colormode()","pixeldat=actsizecoltxt[activity_size_colormode]"])
                     print('step',framenr,"activity_size_colormode changed to ",activity_size_colormode)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_Q:
@@ -1610,28 +1613,28 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                     else:
                         if quadrants >= 0: quadrants = quadrants-1
                     genelife.set_quadrant(quadrants)
-                    register(regfile,framenr,["quadrants = %d" % quadrants,"genelife.set_quadrant(quadrants)"])
+                    register(regfile,framenr,["global quadrants","quadrants = %d" % quadrants,"genelife.set_quadrant(quadrants)"])
                     print('step',framenr,"quadrants changed to ",quadrants)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_R:
                     if   sdl2.SDL_GetModState() & sdl2.KMOD_LALT:
                         rbackground,randominflux = eval(input("Enter rbackground [0-32768] and randominflux (3 deletions only, 2 GoL gene, 1 random gene:"))
                         genelife.set_rbackground(rbackground,randominflux)
-                        register(regfile,framenr,["rbackground = %d" % rbackground,"randominflux = %d" % randominflux,"genelife.set_rbackground(rbackground,randominflux)"])
+                        register(regfile,framenr,["global rbackground,randominflux","rbackground = %d" % rbackground,"randominflux = %d" % randominflux,"genelife.set_rbackground(rbackground,randominflux)"])
                         print('step',framenr,"rbackground changed to ",rbackground,"with random mode ",randominflux)
                     elif   sdl2.SDL_GetModState() &  sdl2.KMOD_LSHIFT:
                         randominflux = 2 if randominflux !=2 else 0
                         genelife.set_randominflux(randominflux)
-                        register(regfile,framenr,["randominflux = %d" % randominflux,"genelife.set_randominflux(randominflux)"])
+                        register(regfile,framenr,["global randominflux","randominflux = %d" % randominflux,"genelife.set_randominflux(randominflux)"])
                         print('step',framenr,"randominflux changed to ",randominflux)
                     elif   sdl2.SDL_GetModState() &  sdl2.KMOD_RSHIFT:
                         randominflux = 3 if randominflux !=3 else 0
                         genelife.set_randominflux(randominflux)
-                        register(regfile,framenr,["randominflux = %d" % randominflux,"genelife.set_randominflux(randominflux)"])
+                        register(regfile,framenr,["global randominflux","randominflux = %d" % randominflux,"genelife.set_randominflux(randominflux)"])
                         print('step',framenr,"randominflux changed to ",randominflux)
                     else:
                         randominflux = 1 if randominflux !=1 else 0
                         genelife.set_randominflux(randominflux)
-                        register(regfile,framenr,["randominflux = %d" % randominflux,"genelife.set_randominflux(randominflux)"])
+                        register(regfile,framenr,["global randominflux","randominflux = %d" % randominflux,"genelife.set_randominflux(randominflux)"])
                         print('step',framenr,"randominflux changed to ",randominflux)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_S:
                     if   (sdl2.SDL_GetModState() &  (sdl2.KMOD_RSHIFT)):
@@ -1659,27 +1662,40 @@ def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, re
                         if(offdt<0): offdt = offdt+1
                     elif offdt>-maxPlane+1: offdt = offdt-1
                     genelife.set_offsets(offdx,offdy,offdt)
-                    register(regfile,framenr,["offdt = %d" % offdt,"genelife.set_offsets(offdx,offdy,offdt)"])
+                    register(regfile,framenr,["global offdt","offdt = %d" % offdt,"genelife.set_offsets(offdx,offdy,offdt)"])
                     print('step',framenr,"offset dt changed to ",offdt)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_V:
                     vscrolling=1-vscrolling
                     genelife.set_vscrolling()
-                    register(regfile,framenr,["vscrolling = %d" % vscrolling,"genelife.set_vscrolling()"])
+                    register(regfile,framenr,["global vscrolling","vscrolling = %d" % vscrolling,"genelife.set_vscrolling()"])
                     print('step',framenr,"vscrolling changed to ",vscrolling)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_X:
                     if   sdl2.SDL_GetModState() &  (sdl2.KMOD_LSHIFT|sdl2.KMOD_RSHIFT): offdx = offdx+1
                     else: offdx = offdx-1
                     genelife.set_offsets(offdx,offdy,offdt)
-                    register(regfile,framenr,["offdx = %d" % offdx,"genelife.set_offsets(offdx,offdy,offdt)"])
+                    register(regfile,framenr,["global offdx","offdx = %d" % offdx,"genelife.set_offsets(offdx,offdy,offdt)"])
                     print('step',framenr,"offset dx changed to ",offdx)
                 elif event.key.keysym.scancode == sdl2.SDL_SCANCODE_Y:
                     if   sdl2.SDL_GetModState() &  (sdl2.KMOD_LSHIFT|sdl2.KMOD_RSHIFT): offdy = offdy+1
                     else: offdy = offdy-1
                     genelife.set_offsets(offdx,offdy,offdt)
-                    register(regfile,framenr,["offdy = %d" % offdy,"genelife.set_offsets(offdx,offdy,offdt)"])
+                    register(regfile,framenr,["global offdy","offdy = %d" % offdy,"genelife.set_offsets(offdx,offdy,offdt)"])
                     print('step',framenr,"offset dy changed to ",offdy)
         if (not mouseclicked):
             if updatesenabled and not pause and (framenr < maxsteps):
+                if regerr == 0:
+                    while framenr == cmdstep:
+                        print('step',framenr,pyregin[stepindex])
+                        # for cmd in pyregin[stepindex]:
+                        #    exec(cmd)
+                        prog = '\n'.join(pyregin[stepindex])
+                        prog = "global colorfunction,colorfunction2\n"+prog
+                        exec(prog,globals(),locals())
+                        stepindex = stepindex + 1
+                        if stepindex == len(stepregin):
+                            cmdstep = -1
+                        else:
+                            cmdstep =stepregin[stepindex]
                 update_sim(nrun, ndisp, nskip, niter, nhist, nstat, count)
             else:
                 if update1:
