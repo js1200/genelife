@@ -957,7 +957,7 @@ def readlist(regfilename):
 # +/- keys reserved for activity ymax : actually the crossover value in N* act/(ymax+act)
 # keys lower case - decrement, upper case - increment, alt - input value: y,Y ymax q,Q quadrant
 # misc. keys save image
-def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, regfile=None):
+def run(nrun, ndisp, nskip, niter, nhist, nstat, count=True, maxsteps=100000, regfile=None,record=None):
     global mstime,framenr,framerate
     global window, surface, surfacex1, surfacex2, scalex2, caption, dispinit, update1, grect1
     global window2, surface2, surface2x1, surface2x2, caption2, dispinit2, grect, render2, update2, renderer2, factory2, image2, message2, font2, textColor2, windowID2
